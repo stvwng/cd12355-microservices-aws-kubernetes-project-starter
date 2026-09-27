@@ -1,0 +1,16 @@
+# Statically provisioned volume on the node's disk. Avoids needing the EBS CSI
+# driver for this demo; data survives pod restarts but not node replacement.
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: postgresql-pv
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  hostPath:
+    path: /mnt/data/postgresql
+    type: DirectoryOrCreate

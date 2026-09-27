@@ -1,0 +1,33 @@
+version: 0.2
+
+# Required CodeBuild environment variables (set on the project):
+#   AWS_DEFAULT_REGION, AWS_ACCOUNT_ID, IMAGE_REPO_NAME
+# Images are tagged MAJOR.MINOR.PATCH, where PATCH is CodeBuild's
+# auto-incrementing build number, so every automatic build gets a unique semver tag.
+# Bump MAJOR_MINOR here for feature (minor) or breaking (major) releases.
+env:
+  variables:
+    MAJOR_MINOR: "1.0"
+
+phases:
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR...
+      - export REGISTRY=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $REGISTRY
+      - export IMAGE_TAG=$MAJOR_MINOR.$CODEBUILD_BUILD_NUMBER
+      - export IMAGE_URI=$REGISTRY/$IMAGE_REPO_NAME:$IMAGE_TAG
+      - echo "Building $IMAGE_URI"
+  build:
+    commands:
+      - docker build -t $IMAGE_URI .
+  post_build:
+    commands:
+      - docker push $IMAGE_URI
+      # Hand the tag to later stages (e.g. a CodePipeline deploy action).
+      - printf '[{"name":"coworking","imageUri":"%s"}]' $IMAGE_URI > imagedefinitions.json
+      - echo "Pushed $IMAGE_URI"
+
+artifacts:
+  files:
+    - imagedefinitions.json
